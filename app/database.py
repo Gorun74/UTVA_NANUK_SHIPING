@@ -1,7 +1,9 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import scoped_session, sessionmaker, DeclarativeBase
 from flask import g
+import json
 import os
+from pathlib import Path
 
 
 class Base(DeclarativeBase):
@@ -41,10 +43,11 @@ def close_session(error=None):
 
 
 def init_db():
-    """Create all tables."""
+    """Create all tables and seed if empty."""
     from app.models import Base as ModelBase
     ModelBase.metadata.create_all(bind=_engine)
     _run_migrations()
+    _seed_if_empty()
 
 
 def _run_migrations():
@@ -93,3 +96,49 @@ def _run_migrations():
             )
         """))
         conn.commit()
+
+
+def _seed_if_empty():
+    """On first deploy (empty DB), load items from the bundled JSON fixture."""
+    with _engine.connect() as conn:
+        count = conn.execute(text("SELECT COUNT(*) FROM cases")).scalar()
+        if count and count > 0:
+            return  # already has data
+
+    fixture = Path(__file__).parent / "data" / "items_fixture.json"
+    if not fixture.exists():
+        return
+
+    with open(fixture, encoding="utf-8") as f:
+        rows = json.load(f)
+
+    from app.models import Item
+    session = _session_factory()
+    try:
+        for row in rows:
+            item = Item(
+                sku=row["sku"],
+                upc=row.get("upc"),
+                old_item_number=row.get("old_item_number"),
+                description=row.get("description"),
+                us_map_price=row.get("us_map_price"),
+                price=row.get("price"),
+                dim_interior=row.get("dim_interior"),
+                dim_exterior=row.get("dim_exterior"),
+                int_length_mm=row.get("int_length_mm"),
+                int_width_mm=row.get("int_width_mm"),
+                int_height_mm=row.get("int_height_mm"),
+                ext_length_mm=row.get("ext_length_mm"),
+                ext_width_mm=row.get("ext_width_mm"),
+                ext_height_mm=row.get("ext_height_mm"),
+                volume_m3=row.get("volume_m3"),
+                reorder_point=row.get("reorder_point", 3),
+                category=row.get("category", "case"),
+            )
+            session.merge(item)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        print(f"[seed] Error: {e}")
+    finally:
+        session.close()
