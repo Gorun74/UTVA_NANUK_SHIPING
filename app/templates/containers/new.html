@@ -187,10 +187,11 @@
     <table class="table" id="catalog-picker">
       <thead>
         <tr>
-          <th>SKU</th>
-          <th data-i18n="th_description">Description</th>
+          <th>#</th>
+          <th data-i18n="th_description">Model</th>
           <th data-i18n="th_ext_dim">Ext. Dim.</th>
           <th data-i18n="th_volume">m³</th>
+          <th data-i18n="th_color">Color</th>
           <th data-i18n="th_price_usd">Price USD</th>
           <th data-i18n="th_qty">Qty</th>
           <th></th>
@@ -245,11 +246,8 @@
     </div>
     <div class="form-group">
       <label data-i18n="color">Color</label>
-      <select id="modal-color">
-        <option value="Black">Black</option>
-        <option value="Orange">Orange</option>
-        <option value="Olive">Olive</option>
-        <option value="Desert Tan">Desert Tan</option>
+      <select id="modal-color" onchange="onModalColorChange()">
+        <!-- populated dynamically by JS based on selected model's available colors -->
       </select>
     </div>
     <div class="form-group">

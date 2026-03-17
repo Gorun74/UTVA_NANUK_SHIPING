@@ -1,4 +1,5 @@
 import json
+import re
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_login import login_required
 from sqlalchemy import select
@@ -13,6 +14,39 @@ from app.logic.shipping import estimate_shipping
 bp = Blueprint("containers", __name__)
 
 CONTAINER_CAPACITY_M3 = {"20ft": 33.2, "40ft": 67.7}
+
+# ── Color code → display name ──────────────────────────────────────────────
+_COLOR_MAP = {
+    "BK": "Black",   "OR": "Orange",  "OL": "Olive",   "DT": "Desert Tan",
+    "YL": "Yellow",  "RD": "Red",     "GP": "Graphite", "BL": "Blue",
+    "SV": "Silver",  "LI": "Lime",    "TN": "Tan",     "CL": "Clear",
+    "PR": "Purple",
+}
+_CHASSIS_NAME = {"W": "Wheels", "T": "Team Carry", "M": "Molded", "H": "HDW"}
+_FOAM_WORDS   = ("w/foam", "w foam", "with foam")
+
+
+def _model_group(sku: str) -> tuple:
+    """Return (group_key, display_name, color_name) from a case SKU."""
+    # NANUK-R: 910SR000BK-0A0  (no dash after SR)
+    m = re.match(r'^(T?\d{3,4})SR\d{3}([A-Z]{2})', sku, re.IGNORECASE)
+    if m:
+        num = m.group(1).upper()
+        color = _COLOR_MAP.get(m.group(2).upper(), m.group(2).upper())
+        return num, f"NANUK {num}", color
+
+    # Standard/special chassis: 910S-000BK-0A0, 975W-000BK-0A0, 991M-010BK
+    m = re.match(r'^(T?\d{3,4})([STWHM])-\d{3}([A-Z]{2})', sku, re.IGNORECASE)
+    if m:
+        num     = m.group(1).upper()
+        chassis = m.group(2).upper()
+        color   = _COLOR_MAP.get(m.group(3).upper(), m.group(3).upper())
+        if chassis == 'S':
+            return num, f"NANUK {num}", color
+        cname = _CHASSIS_NAME.get(chassis, chassis)
+        return f"{num}{chassis}", f"NANUK {num} ({cname})", color
+
+    return sku[:8], sku[:8], "Black"
 
 
 @bp.route("/containers")
@@ -79,26 +113,38 @@ def new_container():
         .order_by(Item.sku)
     ).all()
 
-    from app.routes.catalog import _size_category, CASE_COLORS
-    cases_data = []
+    from app.routes.catalog import _size_category
+    # Group by model — one entry per model, variants dict per color
+    model_groups: dict = {}
     for item, stock in items:
-        cases_data.append({
-            "sku": item.sku,
-            "description": item.description or item.sku,
+        desc_lower = (item.description or "").lower()
+        # Skip foam variants — user wants empty cases only
+        if any(fw in desc_lower for fw in _FOAM_WORDS):
+            continue
+        group_key, display_name, color_name = _model_group(item.sku)
+        if group_key not in model_groups:
+            model_groups[group_key] = {
+                "model":        group_key,
+                "display_name": display_name,
+                "volume_m3":    item.volume_m3 or 0,
+                "ext_l":        item.ext_length_mm,
+                "ext_w":        item.ext_width_mm,
+                "ext_h":        item.ext_height_mm,
+                "dim_ext":      item.dim_exterior or "",
+                "size_cat":     _size_category(item),
+                "variants":     {},
+            }
+        model_groups[group_key]["variants"][color_name] = {
+            "sku":   item.sku,
             "price": item.price or 0,
-            "volume_m3": item.volume_m3 or 0,
-            "ext_l": item.ext_length_mm,
-            "ext_w": item.ext_width_mm,
-            "ext_h": item.ext_height_mm,
-            "dim_ext": item.dim_exterior or "",
-            "size_cat": _size_category(item),
-        })
+        }
+
+    cases_data = sorted(model_groups.values(), key=lambda x: x["model"])
 
     import datetime
     return render_template(
         "containers/new.html",
         cases_json=json.dumps(cases_data),
-        colors=CASE_COLORS,
         capacity=CONTAINER_CAPACITY_M3,
         today=datetime.date.today().isoformat(),
     )
