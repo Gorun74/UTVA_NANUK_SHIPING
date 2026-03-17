@@ -152,7 +152,7 @@ def import_cases_catalog(
 
     Returns (imported_count, skipped_count).
     """
-    from models import Item, Stock
+    from app.models import Item, Stock
 
     # 1. Read filter SKUs from CSV (+ optional description fallback)
     allowed_skus: set[str] = set()
@@ -319,7 +319,7 @@ def import_cases_catalog(
 
 def import_excel(filepath: str, session) -> tuple[int, int]:
     """Import items from Price Agreement Excel only. Returns (imported, skipped)."""
-    from models import Item, Stock
+    from app.models import Item, Stock
 
     wb = openpyxl.load_workbook(filepath, data_only=True)
     ws = wb.worksheets[0]
