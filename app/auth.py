@@ -1,5 +1,6 @@
+import os
+from flask import current_app
 from flask_login import UserMixin
-from app.config import Config
 
 
 class User(UserMixin):
@@ -9,11 +10,24 @@ class User(UserMixin):
 
 
 def _get_users():
+    """Read credentials from Flask app config (set from env vars at startup)."""
     users = {}
-    if Config.USER1_NAME:
-        users[Config.USER1_NAME] = Config.USER1_PASS
-    if Config.USER2_NAME:
-        users[Config.USER2_NAME] = Config.USER2_PASS
+    try:
+        u1 = current_app.config.get("USER1_NAME", "").strip()
+        p1 = current_app.config.get("USER1_PASS", "").strip()
+        u2 = current_app.config.get("USER2_NAME", "").strip()
+        p2 = current_app.config.get("USER2_PASS", "").strip()
+    except RuntimeError:
+        # Outside app context — fall back to env
+        u1 = os.environ.get("USER1_NAME", "admin")
+        p1 = os.environ.get("USER1_PASS", "admin")
+        u2 = os.environ.get("USER2_NAME", "")
+        p2 = os.environ.get("USER2_PASS", "")
+
+    if u1:
+        users[u1] = p1
+    if u2:
+        users[u2] = p2
     return users
 
 
