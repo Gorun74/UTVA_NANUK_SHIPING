@@ -9,5 +9,5 @@ COPY . .
 
 EXPOSE 8000
 
-# Railway injects $PORT; fall back to 8000 locally
-CMD gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120 wsgi:app
+# Shell form CMD so ${PORT:-8000} is expanded by /bin/sh
+CMD gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 1 --preload --timeout 120 wsgi:app
