@@ -100,10 +100,13 @@ def _run_migrations():
 
 def _seed_if_empty():
     """On first deploy (empty DB), load items from the bundled JSON fixture."""
+    print("[seed] Checking if DB needs seeding...", flush=True)
     with _engine.connect() as conn:
         count = conn.execute(text("SELECT COUNT(*) FROM cases")).scalar()
         if count and count > 0:
+            print(f"[seed] DB already has {count} items, skipping.", flush=True)
             return  # already has data
+    print("[seed] DB is empty, loading fixture...", flush=True)
 
     fixture = Path(__file__).parent / "data" / "items_fixture.json"
     if not fixture.exists():
@@ -137,8 +140,10 @@ def _seed_if_empty():
             )
             session.merge(item)
         session.commit()
+        print(f"[seed] Seeded {len(rows)} items OK.", flush=True)
     except Exception as e:
         session.rollback()
-        print(f"[seed] Error: {e}")
+        print(f"[seed] Error during seeding: {e}", flush=True)
+        import traceback; traceback.print_exc()
     finally:
         session.close()
