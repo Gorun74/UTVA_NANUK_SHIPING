@@ -51,6 +51,7 @@ def _run_migrations():
     """Apply any schema additions that might be missing."""
     with _engine.connect() as conn:
         migrations = [
+            "ALTER TABLE cases ADD COLUMN category TEXT DEFAULT 'case'",
             "ALTER TABLE containers ADD COLUMN total_cbm REAL",
             "ALTER TABLE containers ADD COLUMN ship_ocean_aud REAL",
             "ALTER TABLE containers ADD COLUMN ship_extras_aud REAL",

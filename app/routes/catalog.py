@@ -112,8 +112,8 @@ def import_catalog():
 
         try:
             from app.utils.importer import import_cases_catalog
-            imported, skipped = import_cases_catalog(cases_path, catalog_path, price_path, session)
-            flash(f"Import complete: {imported} items imported, {skipped} skipped.", "success")
+            cases_n, others_n = import_cases_catalog(cases_path, catalog_path, price_path, session)
+            flash(f"Import complete: {cases_n} cases + {others_n} accessories imported.", "success")
             return redirect(url_for("catalog.list_items"))
         except Exception as e:
             session.rollback()

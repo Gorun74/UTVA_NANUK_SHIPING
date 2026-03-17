@@ -70,9 +70,13 @@ def new_container():
             flash(f"Error: {e}", "error")
             return redirect(url_for("containers.new_container"))
 
-    # GET — load items for animated packer
+    # GET — load case items that have volume (needed for container packer)
     items = session.execute(
-        select(Item, Stock).outerjoin(Stock, Stock.sku == Item.sku).order_by(Item.sku)
+        select(Item, Stock)
+        .outerjoin(Stock, Stock.sku == Item.sku)
+        .where(Item.category == 'case')
+        .where(Item.volume_m3 > 0)
+        .order_by(Item.sku)
     ).all()
 
     from app.routes.catalog import _size_category, CASE_COLORS

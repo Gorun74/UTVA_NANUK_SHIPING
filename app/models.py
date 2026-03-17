@@ -25,6 +25,7 @@ class Item(Base):
     ext_height_mm = Column(Float, nullable=True)
     volume_m3 = Column(Float, nullable=True)
     reorder_point = Column(Integer, default=3)
+    category = Column(Text, default='case')   # 'case' | 'other'
 
     stock_record = relationship('Stock', back_populates='item', uselist=False, cascade='all, delete-orphan')
     container_lines = relationship('ContainerLine', back_populates='item')

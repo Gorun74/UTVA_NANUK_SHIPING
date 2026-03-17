@@ -12,8 +12,10 @@
 <!-- Status bar -->
 <div class="status-timeline">
   {% set statuses = ['ordered', 'in_transit', 'received', 'closed'] %}
+  {% set cur_idx = statuses.index(container.status) if container.status in statuses else -1 %}
   {% for s in statuses %}
-  <div class="timeline-step {% if container.status == s %}active{% elif statuses.index(s) < statuses.index(container.status) if container.status in statuses else false %}done{% endif %}">
+  {% set s_idx = loop.index0 %}
+  <div class="timeline-step {% if container.status == s %}active{% elif s_idx < cur_idx %}done{% endif %}">
     <div class="step-dot"></div>
     <div class="step-label">{{ s.replace('_',' ').title() }}</div>
   </div>

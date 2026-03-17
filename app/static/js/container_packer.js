@@ -294,6 +294,9 @@ async function _fetchEstimate() {
     document.getElementById("ship-estimate").style.display = "";
 
     // Update header box (always visible)
+    const grandTotal = goodsAud + (data.TOTAL_AUD || 0);
+    _setEl("h-goods-usd",  "$" + goodsUsd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " USD");
+    _setEl("h-goods-aud",  "≈ A$" + goodsAud.toLocaleString("en-AU", { minimumFractionDigits: 0, maximumFractionDigits: 0 }));
     _setEl("h-ocean",    fmt(data.ocean_AUD));
     _setEl("h-extras",   fmt(data.extras_AUD));
     _setEl("h-insurance",fmt(data.insurance_AUD));
@@ -302,6 +305,7 @@ async function _fetchEstimate() {
     _setEl("h-total",    fmt2(data.TOTAL_AUD));
     _setEl("h-per-cbm",  "A$" + (data.per_cbm_AUD || 0).toFixed(2) + "/m³");
     _setEl("h-type",     data.container || "—");
+    _setEl("h-grand-total", "A$" + grandTotal.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
     _setEl("ship-header-cbm", totalCbm.toFixed(2) + " m³");
     _setEl("ship-header-note", data.note || "");
   } catch {}
@@ -313,8 +317,12 @@ function _setEl(id, val) {
 }
 
 function _resetHeaderEstimate() {
-  ["h-ocean","h-extras","h-insurance","h-duty","h-gst","h-per-cbm","h-type"].forEach(id => _setEl(id, "—"));
-  _setEl("h-total", "add items →");
+  ["h-ocean","h-extras","h-insurance","h-duty","h-gst","h-per-cbm"].forEach(id => _setEl(id, "—"));
+  _setEl("h-goods-usd", "—");
+  _setEl("h-goods-aud", "add items");
+  _setEl("h-total", "—");
+  _setEl("h-type", "add items to estimate");
+  _setEl("h-grand-total", "—");
   _setEl("ship-header-cbm", "");
   _setEl("ship-header-note", "");
 }
@@ -332,9 +340,14 @@ function updateSummary() {
 
   const totalCbm = keys.reduce((s, k) => s + orderedItems[k].volume_m3 * orderedItems[k].qty, 0);
   const totalUsd = keys.reduce((s, k) => s + (orderedItems[k].sell_price || 0) * orderedItems[k].qty, 0);
+  const rate = parseFloat(document.getElementById("used_rate")?.value || "1.58");
 
   document.getElementById("summary-cbm").textContent = totalCbm.toFixed(3) + " m³";
   document.getElementById("summary-usd").textContent = "$" + totalUsd.toFixed(2) + " USD";
+
+  // Keep goods KPI updated in real-time (shipping estimate arrives async)
+  _setEl("h-goods-usd", "$" + totalUsd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " USD");
+  _setEl("h-goods-aud", "≈ A$" + (totalUsd * rate).toLocaleString("en-AU", { minimumFractionDigits: 0, maximumFractionDigits: 0 }));
 
   const tbody = document.getElementById("summary-body");
   tbody.innerHTML = keys.map(sku => {

@@ -33,7 +33,8 @@
     </div>
     <div class="form-group">
       <label data-i18n="usd_rate">USD/AUD Rate</label>
-      <input type="number" id="used_rate" value="1.58" step="0.0001" min="0.5" max="5">
+      <input type="number" id="used_rate" value="1.58" step="0.0001" min="0.5" max="5"
+             oninput="updateSummary(); updateShippingEstimate()">
     </div>
     <div class="form-group">
       <label data-i18n="container_size">Container Size</label>
@@ -44,7 +45,7 @@
     </div>
     <div class="form-group">
       <label data-i18n="container_fill">Fill</label>
-      <select id="container_fill">
+      <select id="container_fill" onchange="updateShippingEstimate()">
         <option value="full">Full</option>
         <option value="half">Half</option>
       </select>
@@ -53,34 +54,54 @@
   <div class="form-row">
     <div class="form-group">
       <label data-i18n="shipping_aud">Shipping (AUD)</label>
-      <input type="number" id="shipping_aud" value="0" step="0.01" min="0">
+      <input type="number" id="shipping_aud" value="0" step="0.01" min="0"
+             oninput="updateShippingEstimate()">
     </div>
     <div class="form-group">
       <label data-i18n="other1">Other 1 (AUD)</label>
-      <input type="number" id="other1_aud" value="0" step="0.01" min="0">
+      <input type="number" id="other1_aud" value="0" step="0.01" min="0"
+             oninput="updateShippingEstimate()">
     </div>
     <div class="form-group">
       <label data-i18n="other2">Other 2 (AUD)</label>
-      <input type="number" id="other2_aud" value="0" step="0.01" min="0">
+      <input type="number" id="other2_aud" value="0" step="0.01" min="0"
+             oninput="updateShippingEstimate()">
     </div>
   </div>
 
-  <!-- Shipping cost estimate — always visible, updates on input change -->
+  <!-- Cost summary — always visible, updates as items are added -->
   <div class="ship-estimate-header" id="ship-header-box">
-    <div class="ship-est-title">
-      Estimated Shipping Costs
-      <span id="ship-header-cbm" class="cbm-badge" style="margin-left:8px"></span>
-      <span id="ship-header-note" class="ship-note" style="display:inline;margin-left:8px"></span>
+    <!-- KPI row: Goods + Shipping = Grand Total -->
+    <div class="cost-kpi-row">
+      <div class="cost-kpi">
+        <div class="cost-kpi-label">GOODS VALUE</div>
+        <div class="cost-kpi-value" id="h-goods-usd">—</div>
+        <div class="cost-kpi-sub" id="h-goods-aud">add items</div>
+      </div>
+      <div class="cost-kpi-op">+</div>
+      <div class="cost-kpi">
+        <div class="cost-kpi-label">SHIPPING &amp; TAXES</div>
+        <div class="cost-kpi-value" id="h-total">—</div>
+        <div class="cost-kpi-sub" id="h-type">add items to estimate</div>
+      </div>
+      <div class="cost-kpi-op">=</div>
+      <div class="cost-kpi cost-kpi-grand">
+        <div class="cost-kpi-label">GRAND TOTAL (AUD)</div>
+        <div class="cost-kpi-value" id="h-grand-total">—</div>
+        <div class="cost-kpi-sub">
+          <span id="ship-header-cbm"></span>
+          <span id="ship-header-note"></span>
+        </div>
+      </div>
     </div>
+    <!-- Detail breakdown -->
     <div class="ship-est-grid">
       <div class="ship-est-item"><span>Ocean Freight</span><strong id="h-ocean">—</strong></div>
       <div class="ship-est-item"><span>Fixed Extras (THC, customs, BAF, trucking)</span><strong id="h-extras">—</strong></div>
       <div class="ship-est-item"><span>Insurance (1.5% CIF)</span><strong id="h-insurance">—</strong></div>
       <div class="ship-est-item"><span>Duty (5% CIF)</span><strong id="h-duty">—</strong></div>
       <div class="ship-est-item"><span>GST (10%)</span><strong id="h-gst">—</strong></div>
-      <div class="ship-est-item ship-est-total"><span>TOTAL (AUD)</span><strong id="h-total">add items →</strong></div>
       <div class="ship-est-item"><span>Per CBM</span><strong id="h-per-cbm">—</strong></div>
-      <div class="ship-est-item"><span>Transport type</span><strong id="h-type">—</strong></div>
     </div>
   </div>
 </div>
