@@ -9,7 +9,23 @@
 {% endblock %}
 
 {% block content %}
-<!-- Status bar -->
+
+{% if container.status == 'draft' %}
+<div class="draft-banner">
+  <span>&#9998; This is a <strong>DRAFT</strong> &mdash; not yet an order.</span>
+  <div class="draft-actions">
+    <a href="{{ url_for('containers.edit_draft', container_id=container.id) }}" class="btn btn-warning-outline">&#9998; Edit Draft</a>
+    <form method="POST" action="{{ url_for('containers.confirm_draft', container_id=container.id) }}"
+          onsubmit="return confirm('Confirm as order?')" style="display:inline">
+      <button type="submit" class="btn btn-success">&#10004; Confirm Order</button>
+    </form>
+    <form method="POST" action="{{ url_for('containers.delete_container', container_id=container.id) }}"
+          onsubmit="return confirm('Delete this draft permanently?')" style="display:inline">
+      <button type="submit" class="btn btn-danger">&#10005; Delete Draft</button>
+    </form>
+  </div>
+</div>
+{% else %}
 <div class="status-timeline">
   {% set statuses = ['ordered', 'in_transit', 'received', 'closed'] %}
   {% set cur_idx = statuses.index(container.status) if container.status in statuses else -1 %}
@@ -21,6 +37,7 @@
   </div>
   {% endfor %}
 </div>
+{% endif %}
 
 <div class="two-col">
   <!-- Container info -->
@@ -107,7 +124,7 @@
 </div>
 
 <!-- Status actions -->
-{% if container.status not in ['received', 'sold_out', 'closed'] %}
+{% if container.status not in ['received', 'sold_out', 'closed', 'draft'] %}
 <div class="card action-card">
   <div class="card-header"><h3 data-i18n="update_status">Update Status</h3></div>
   <div class="action-buttons">

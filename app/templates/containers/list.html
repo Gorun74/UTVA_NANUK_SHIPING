@@ -9,6 +9,50 @@
 {% endblock %}
 
 {% block content %}
+
+{% if drafts %}
+<div class="card" style="border-color:rgba(245,158,11,.4);margin-bottom:16px">
+  <div class="card-header" style="background:rgba(245,158,11,.08)">
+    <h3 style="color:var(--warning)">✏ Drafts ({{ drafts|length }})</h3>
+    <a href="{{ url_for('containers.new_container') }}" class="btn btn-sm btn-primary">+ New Draft</a>
+  </div>
+  <table class="table containers-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Date</th>
+        <th>Size</th>
+        <th>Items</th>
+        <th>Rate</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in drafts %}
+      <tr class="clickable" onclick="window.location='{{ url_for('containers.detail', container_id=c.id) }}'">
+        <td><strong>#{{ c.id }}</strong></td>
+        <td>{{ c.date_ordered or '—' }}</td>
+        <td>{{ c.container_size }} {{ c.container_fill }}</td>
+        <td>{{ c.lines|length if c.lines else '—' }} lines</td>
+        <td>{{ "%.4f"|format(c.used_rate) if c.used_rate else '—' }}</td>
+        <td onclick="event.stopPropagation()" style="white-space:nowrap">
+          <a href="{{ url_for('containers.edit_draft', container_id=c.id) }}" class="btn btn-sm">✏ Edit</a>
+          <form method="POST" action="{{ url_for('containers.confirm_draft', container_id=c.id) }}"
+                onsubmit="return confirm('Confirm as order?')" style="display:inline">
+            <button class="btn btn-sm btn-success">✔</button>
+          </form>
+          <form method="POST" action="{{ url_for('containers.delete_container', container_id=c.id) }}"
+                onsubmit="return confirm('Delete draft?')" style="display:inline">
+            <button class="btn btn-sm btn-danger">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
 <div class="card">
   <table class="table containers-table">
     <thead>

@@ -832,3 +832,34 @@ input:focus, select:focus, textarea:focus {
   line-height: 1.5;
   pointer-events: none;
 }
+
+/* ---- Draft status badge ---- */
+.status-draft {
+  background: rgba(245,158,11,.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245,158,11,.4);
+}
+
+/* ---- Draft banner (detail page) ---- */
+.draft-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: rgba(245,158,11,.08);
+  border: 1px solid rgba(245,158,11,.35);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  color: #fbbf24;
+  font-size: 13px;
+}
+.draft-banner strong { color: #fcd34d; }
+.draft-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-warning-outline {
+  background: transparent;
+  border: 1px solid var(--warning);
+  color: var(--warning);
+}
+.btn-warning-outline:hover { background: rgba(245,158,11,.12); }

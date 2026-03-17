@@ -83,7 +83,19 @@ def _compute_and_store_shipping_estimate(session, container: Container, lines_da
     return summary
 
 
-def create_container(session, header: dict, lines_data: list) -> Container:
+def delete_draft(session, container_id: int):
+    """Delete a draft container and its lines."""
+    container = session.get(Container, container_id)
+    if container is None:
+        raise ValueError(f"Container {container_id} not found")
+    if container.status != "draft":
+        raise ValueError("Only draft containers can be deleted this way")
+    session.execute(delete(ContainerLine).where(ContainerLine.container_id == container_id))
+    session.delete(container)
+    session.commit()
+
+
+def create_container(session, header: dict, lines_data: list, status: str = "ordered") -> Container:
     date_ordered = header['date_ordered']
     eta = header.get('expected_arrival_date') or _default_eta(date_ordered)
     container = Container(
@@ -97,7 +109,7 @@ def create_container(session, header: dict, lines_data: list) -> Container:
         other2_label=header.get('other2_label', 'Other 2'),
         container_size=header.get('container_size', '20ft'),
         container_fill=header.get('container_fill', 'full'),
-        status='ordered',
+        status=status,
     )
     session.add(container)
     session.flush()

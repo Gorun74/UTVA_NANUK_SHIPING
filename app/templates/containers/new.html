@@ -1,6 +1,12 @@
 {% extends "base.html" %}
-{% block title %}New Container — NANUK{% endblock %}
-{% block page_title %}<span data-i18n="new_container">New Container</span>{% endblock %}
+{% block title %}{% if draft_id %}Edit Draft #{{ draft_id }}{% else %}New Container{% endif %} — NANUK{% endblock %}
+{% block page_title %}
+  {% if draft_id %}
+    <span style="color:var(--warning)">✏ Edit Draft <span class="muted">#{{ draft_id }}</span></span>
+  {% else %}
+    <span data-i18n="new_container">New Container</span>
+  {% endif %}
+{% endblock %}
 
 {% block topbar_actions %}
 <div class="view-toggle">
@@ -25,29 +31,29 @@
   <div class="form-row">
     <div class="form-group">
       <label data-i18n="date_ordered">Date Ordered</label>
-      <input type="date" id="date_ordered" value="{{ today }}" required>
+      <input type="date" id="date_ordered" value="{{ draft_header.date_ordered if draft_header else today }}" required>
     </div>
     <div class="form-group">
       <label data-i18n="eta">ETA</label>
-      <input type="date" id="expected_arrival_date">
+      <input type="date" id="expected_arrival_date" value="{{ draft_header.expected_arrival_date if draft_header else '' }}">
     </div>
     <div class="form-group">
       <label data-i18n="usd_rate">USD/AUD Rate</label>
-      <input type="number" id="used_rate" value="1.58" step="0.0001" min="0.5" max="5"
+      <input type="number" id="used_rate" value="{{ draft_header.used_rate if draft_header else '1.58' }}" step="0.0001" min="0.5" max="5"
              oninput="updateSummary(); updateShippingEstimate()">
     </div>
     <div class="form-group">
       <label data-i18n="container_size">Container Size</label>
       <select id="container_size" onchange="updateCapacity()">
-        <option value="20ft">20ft (33.2 m³)</option>
-        <option value="40ft">40ft (67.7 m³)</option>
+        <option value="20ft" {% if draft_header and draft_header.container_size == '20ft' %}selected{% endif %}>20ft (33.2 m³)</option>
+        <option value="40ft" {% if draft_header and draft_header.container_size == '40ft' %}selected{% endif %}>40ft (67.7 m³)</option>
       </select>
     </div>
     <div class="form-group">
       <label data-i18n="container_fill">Fill</label>
       <select id="container_fill" onchange="updateShippingEstimate()">
-        <option value="full">Full</option>
-        <option value="half">Half</option>
+        <option value="full" {% if draft_header and draft_header.container_fill == 'full' %}selected{% endif %}>Full</option>
+        <option value="half" {% if draft_header and draft_header.container_fill == 'half' %}selected{% endif %}>Half</option>
       </select>
     </div>
   </div>
@@ -228,8 +234,11 @@
     <tbody id="summary-body"></tbody>
   </table>
   <div class="form-actions">
-    <button onclick="saveContainer()" class="btn btn-primary btn-large" data-i18n="save_container">
-      Save Container Order
+    <button onclick="saveContainer(false)" class="btn btn-primary btn-large" data-i18n="save_container">
+      📦 Save Container Order
+    </button>
+    <button onclick="saveContainer(true)" class="btn btn-warning btn-large" style="background:rgba(245,158,11,.15);border-color:var(--warning);color:var(--warning)">
+      💾 Save as Draft
     </button>
     <button onclick="clearAll()" class="btn" data-i18n="clear_all">Clear All</button>
   </div>
@@ -264,6 +273,8 @@
 <script>
 const CASES = {{ cases_json | safe }};
 const CAPACITY = {{ capacity | tojson }};
+const DRAFT_ID = {{ draft_id | tojson if draft_id else 'null' }};
+const DRAFT_PREFILL = {{ prefill_json | safe if prefill_json else 'null' }};
 </script>
 <script src="{{ url_for('static', filename='js/container_packer.js') }}"></script>
 {% endblock %}

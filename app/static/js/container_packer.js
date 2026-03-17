@@ -32,9 +32,20 @@ let pendingDropModel = null;   // model group_key for the open modal
 document.addEventListener("DOMContentLoaded", () => {
   const df = document.getElementById("date_ordered");
   if (df && !df.value) df.value = new Date().toISOString().split("T")[0];
+
+  // Pre-populate from draft if editing
+  if (typeof DRAFT_PREFILL === "object" && DRAFT_PREFILL) {
+    orderedItems = DRAFT_PREFILL;
+  }
+
   filterSize("small");
   setupDropZone();
   buildCatalogTable();
+  if (Object.keys(orderedItems).length) {
+    renderDropped();
+    updateSummary();
+    updateShippingEstimate();
+  }
   document.getElementById("modal").addEventListener("click", e => {
     if (e.target === document.getElementById("modal")) closeModal();
   });
@@ -484,7 +495,7 @@ function tableAddItem(model_key) {
 }
 
 /* ─── Save container ─────────────────────────────────────────────────────── */
-async function saveContainer() {
+async function saveContainer(asDraft = false) {
   const keys = Object.keys(orderedItems);
   if (!keys.length) return alert("Add at least one item to the container.");
 
@@ -502,6 +513,8 @@ async function saveContainer() {
       qty_ordered:    orderedItems[sku].qty,
       unit_price_usd: orderedItems[sku].sell_price || null,
     })),
+    save_as_draft: asDraft,
+    draft_id:      (typeof DRAFT_ID !== "undefined" && DRAFT_ID) ? DRAFT_ID : null,
   };
 
   try {

@@ -7,7 +7,7 @@ from app.database import get_session
 from app.models import Container, ContainerLine, Item, Stock
 from app.logic.containers import (
     create_container, receive_container, advance_container_status,
-    reset_container_and_warehouse_data
+    reset_container_and_warehouse_data, delete_draft,
 )
 from app.logic.shipping import estimate_shipping
 
@@ -53,10 +53,12 @@ def _model_group(sku: str) -> tuple:
 @login_required
 def list_containers():
     session = get_session()
-    containers = session.execute(
+    all_containers = session.execute(
         select(Container).order_by(Container.id.desc())
     ).scalars().all()
-    return render_template("containers/list.html", containers=containers)
+    drafts = [c for c in all_containers if c.status == 'draft']
+    containers = [c for c in all_containers if c.status != 'draft']
+    return render_template("containers/list.html", containers=containers, drafts=drafts)
 
 
 @bp.route("/containers/new", methods=["GET", "POST"])
@@ -66,6 +68,9 @@ def new_container():
 
     if request.method == "POST":
         data = request.get_json() or request.form
+        save_as_draft = bool(data.get("save_as_draft"))
+        draft_id = data.get("draft_id")  # present when editing an existing draft
+
         header = {
             "date_ordered": data.get("date_ordered"),
             "expected_arrival_date": data.get("expected_arrival_date") or None,
@@ -91,11 +96,23 @@ def new_container():
             flash("Add at least one item.", "error")
             return redirect(url_for("containers.new_container"))
 
+        status = "draft" if save_as_draft else "ordered"
         try:
-            container = create_container(session, header, lines_data)
+            # If editing an existing draft, delete it first then recreate
+            if draft_id:
+                old = session.get(Container, int(draft_id))
+                if old and old.status == "draft":
+                    from sqlalchemy import delete as sa_delete
+                    from app.models import ContainerLine as CL
+                    session.execute(sa_delete(CL).where(CL.container_id == old.id))
+                    session.delete(old)
+                    session.flush()
+
+            container = create_container(session, header, lines_data, status=status)
             if request.is_json:
                 return jsonify({"id": container.id, "redirect": url_for("containers.detail", container_id=container.id)})
-            flash(f"Container #{container.id} created.", "success")
+            verb = "Draft saved" if save_as_draft else "Container created"
+            flash(f"{verb} — #{container.id}.", "success")
             return redirect(url_for("containers.detail", container_id=container.id))
         except Exception as e:
             session.rollback()
@@ -206,6 +223,121 @@ def update_status(container_id):
         session.rollback()
         flash(f"Error: {e}", "error")
     return redirect(url_for("containers.detail", container_id=container_id))
+
+
+@bp.route("/containers/<int:container_id>/edit")
+@login_required
+def edit_draft(container_id):
+    """Reopen the packer with an existing draft pre-populated."""
+    session = get_session()
+    container = session.get(Container, container_id)
+    if not container or container.status != "draft":
+        flash("Draft not found.", "error")
+        return redirect(url_for("containers.list_containers"))
+
+    lines = session.execute(
+        select(ContainerLine, Item)
+        .join(Item, ContainerLine.sku == Item.sku)
+        .where(ContainerLine.container_id == container_id)
+    ).all()
+
+    # Build prefill dict matching JS orderedItems format
+    prefill = {}
+    for cl, item in lines:
+        group_key, display_name, color_name = _model_group(cl.sku)
+        prefill[cl.sku] = {
+            "sku": cl.sku,
+            "model": group_key,
+            "display_name": display_name,
+            "color": color_name,
+            "qty": cl.qty_ordered or 1,
+            "sell_price": cl.unit_price_usd or 0,
+            "volume_m3": item.volume_m3 or 0 if item else 0,
+            "ext_l": item.ext_length_mm if item else None,
+            "ext_w": item.ext_width_mm if item else None,
+            "ext_h": item.ext_height_mm if item else None,
+        }
+
+    # Reuse GET part of new_container
+    items = session.execute(
+        select(Item, Stock)
+        .outerjoin(Stock, Stock.sku == Item.sku)
+        .where(Item.category == 'case')
+        .where(Item.volume_m3 > 0)
+        .order_by(Item.sku)
+    ).all()
+
+    from app.routes.catalog import _size_category
+    model_groups: dict = {}
+    for item, stock in items:
+        desc_lower = (item.description or "").lower()
+        if any(fw in desc_lower for fw in _FOAM_WORDS):
+            continue
+        group_key, display_name, color_name = _model_group(item.sku)
+        if group_key not in model_groups:
+            model_groups[group_key] = {
+                "model": group_key, "display_name": display_name,
+                "volume_m3": item.volume_m3 or 0,
+                "ext_l": item.ext_length_mm, "ext_w": item.ext_width_mm,
+                "ext_h": item.ext_height_mm, "dim_ext": item.dim_exterior or "",
+                "size_cat": _size_category(item), "variants": {},
+            }
+        model_groups[group_key]["variants"][color_name] = {
+            "sku": item.sku, "price": item.price or 0,
+        }
+
+    import datetime
+    return render_template(
+        "containers/new.html",
+        cases_json=json.dumps(sorted(model_groups.values(), key=lambda x: x["model"])),
+        capacity=CONTAINER_CAPACITY_M3,
+        today=datetime.date.today().isoformat(),
+        draft_id=container.id,
+        prefill_json=json.dumps(prefill),
+        draft_header={
+            "date_ordered": container.date_ordered or "",
+            "expected_arrival_date": container.expected_arrival_date or "",
+            "used_rate": container.used_rate or 1.58,
+            "shipping_aud": container.shipping_aud or 0,
+            "other1_aud": container.other1_aud or 0,
+            "other2_aud": container.other2_aud or 0,
+            "container_size": container.container_size or "20ft",
+            "container_fill": container.container_fill or "full",
+        },
+    )
+
+
+@bp.route("/containers/<int:container_id>/confirm", methods=["POST"])
+@login_required
+def confirm_draft(container_id):
+    """Convert a draft to an ordered container."""
+    session = get_session()
+    container = session.get(Container, container_id)
+    if not container or container.status != "draft":
+        flash("Draft not found.", "error")
+        return redirect(url_for("containers.list_containers"))
+    try:
+        container.status = "ordered"
+        session.commit()
+        flash(f"Container #{container_id} confirmed as order!", "success")
+    except Exception as e:
+        session.rollback()
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("containers.detail", container_id=container_id))
+
+
+@bp.route("/containers/<int:container_id>/delete", methods=["POST"])
+@login_required
+def delete_container(container_id):
+    """Delete a draft container."""
+    session = get_session()
+    try:
+        delete_draft(session, container_id)
+        flash("Draft deleted.", "success")
+    except Exception as e:
+        session.rollback()
+        flash(f"Error: {e}", "error")
+    return redirect(url_for("containers.list_containers"))
 
 
 @bp.route("/containers/<int:container_id>/export")
