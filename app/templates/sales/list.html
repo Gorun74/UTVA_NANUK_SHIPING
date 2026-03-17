@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Sales — NANUK{% endblock %}
+{% block page_title %}<span data-i18n="nav_sales">Sales</span>{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('sales.new_sale') }}" class="btn btn-primary">
+  + <span data-i18n="new_sale">New Sale</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th data-i18n="th_date">Date</th>
+        <th data-i18n="th_channel">Channel</th>
+        <th data-i18n="th_qty">Units</th>
+        <th data-i18n="th_revenue">Revenue (AUD)</th>
+        <th data-i18n="th_profit">Net Profit (AUD)</th>
+        <th data-i18n="th_margin">Margin</th>
+        <th data-i18n="th_rate">Rate</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in sales %}
+      <tr class="clickable" onclick="window.location='{{ url_for('sales.detail', sale_id=s.id) }}'">
+        <td>#{{ s.id }}</td>
+        <td>{{ s.date_sold }}</td>
+        <td>{{ s.channel }}</td>
+        <td>{{ s.total_qty }}</td>
+        <td>A${{ "{:,.2f}".format(s.total_revenue) }}</td>
+        <td class="{% if s.total_profit > 0 %}profit-pos{% elif s.total_profit < 0 %}profit-neg{% endif %}">
+          A${{ "{:,.2f}".format(s.total_profit) }}
+        </td>
+        <td>
+          {% if s.total_revenue %}
+            {{ "{:.1f}".format(s.total_profit / s.total_revenue * 100) }}%
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ "%.4f"|format(s.current_rate) }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="empty-row" data-i18n="no_sales">No sales yet</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Sale #{{ sale.id }} — NANUK{% endblock %}
+{% block page_title %}Sale <span class="muted">#{{ sale.id }}</span>{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('sales.list_sales') }}" class="btn" data-i18n="back">← Back</a>
+{% endblock %}
+
+{% block content %}
+<div class="two-col">
+  <div class="card">
+    <div class="card-header"><h3 data-i18n="sale_info">Sale Info</h3></div>
+    <div class="info-grid">
+      <div class="info-row"><span data-i18n="date_sold">Date</span><strong>{{ sale.date_sold }}</strong></div>
+      <div class="info-row"><span data-i18n="channel">Channel</span><strong>{{ sale.channel }}</strong></div>
+      <div class="info-row"><span data-i18n="usd_rate">USD/AUD Rate</span><strong>{{ "%.4f"|format(sale.current_rate) }}</strong></div>
+      <div class="info-row"><span data-i18n="total_units">Total Units</span><strong>{{ total_qty }}</strong></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><h3 data-i18n="profit_summary">Profit Summary</h3></div>
+    <div class="info-grid">
+      <div class="info-row"><span data-i18n="total_revenue">Revenue</span><strong>A${{ "{:,.2f}".format(total_revenue) }}</strong></div>
+      <div class="info-row"><span>COGS</span><strong>A${{ "{:,.2f}".format(total_cogs) }}</strong></div>
+      <div class="info-row total-row"><span data-i18n="net_profit">Net Profit</span>
+        <strong class="{% if total_profit > 0 %}profit-pos{% else %}profit-neg{% endif %}">
+          A${{ "{:,.2f}".format(total_profit) }}
+        </strong>
+      </div>
+      <div class="info-row"><span data-i18n="margin">Margin</span>
+        <strong>{% if total_revenue %}{{ "{:.1f}".format(total_profit / total_revenue * 100) }}%{% else %}—{% endif %}</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3 data-i18n="sale_lines">Sale Lines</h3></div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th data-i18n="th_description">Description</th>
+        <th data-i18n="th_qty">Qty</th>
+        <th data-i18n="th_sell_price">Sell Price</th>
+        <th data-i18n="th_revenue">Revenue</th>
+        <th>COGS</th>
+        <th data-i18n="th_profit">Profit</th>
+        <th data-i18n="th_margin">Margin</th>
+        <th data-i18n="th_fx">FX Gain/Loss</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td class="mono">{{ line.sku }}</td>
+        <td>{{ line.description }}</td>
+        <td>{{ line.qty }}</td>
+        <td>A${{ "%.2f"|format(line.sell_price_aud) }}</td>
+        <td>A${{ "{:,.2f}".format(line.revenue_aud) }}</td>
+        <td>A${{ "{:,.2f}".format(line.cogs_aud) if line.cogs_aud else '—' }}</td>
+        <td class="{% if line.net_profit_aud and line.net_profit_aud > 0 %}profit-pos{% elif line.net_profit_aud and line.net_profit_aud < 0 %}profit-neg{% endif %}">
+          {% if line.net_profit_aud %}A${{ "{:,.2f}".format(line.net_profit_aud) }}{% else %}—{% endif %}
+        </td>
+        <td>{% if line.gross_margin_pct %}{{ "%.1f"|format(line.gross_margin_pct) }}%{% else %}—{% endif %}</td>
+        <td class="{% if line.fx_gain_loss and line.fx_gain_loss > 0 %}profit-pos{% elif line.fx_gain_loss and line.fx_gain_loss < 0 %}profit-neg{% endif %}">
+          {% if line.fx_gain_loss %}A${{ "{:,.2f}".format(line.fx_gain_loss) }}{% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

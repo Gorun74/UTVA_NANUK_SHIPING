@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Reports — NANUK{% endblock %}
+{% block page_title %}<span data-i18n="nav_reports">Reports</span>{% endblock %}
+
+{% block content %}
+<!-- Profitability summary -->
+{% if profitability %}
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label" data-i18n="total_revenue">Total Revenue</div>
+    <div class="kpi-value">A${{ "{:,.0f}".format(profitability.total_revenue_aud or 0) }}</div>
+  </div>
+  <div class="kpi-card kpi-blue">
+    <div class="kpi-label">COGS</div>
+    <div class="kpi-value">A${{ "{:,.0f}".format(profitability.total_cogs_aud or 0) }}</div>
+  </div>
+  <div class="kpi-card {% if (profitability.net_profit_aud or 0) > 0 %}kpi-green{% else %}kpi-warning{% endif %}">
+    <div class="kpi-label" data-i18n="net_profit">Net Profit</div>
+    <div class="kpi-value">A${{ "{:,.0f}".format(profitability.net_profit_aud or 0) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label" data-i18n="units_sold">Units Sold</div>
+    <div class="kpi-value">{{ profitability.total_units_sold or 0 }}</div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Tabs -->
+<div class="report-tabs">
+  <button class="tab-btn active" onclick="showTab('stock')" data-i18n="tab_stock">Stock Snapshot</button>
+  <button class="tab-btn" onclick="showTab('sales')" data-i18n="tab_sales">Sales Report</button>
+  <button class="tab-btn" onclick="showTab('containers')" data-i18n="tab_containers">Containers</button>
+</div>
+
+<!-- Stock snapshot -->
+<div id="tab-stock" class="tab-content active">
+  <div class="card">
+    <div class="card-header">
+      <h3 data-i18n="tab_stock">Stock Snapshot</h3>
+      <a href="{{ url_for('reports.export', report_type='stock') }}" class="btn btn-sm">↓ Excel</a>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th data-i18n="th_description">Description</th>
+          <th data-i18n="th_qty">Qty</th>
+          <th data-i18n="th_landed_cost">Avg Landed Cost</th>
+          <th data-i18n="th_stock_value">Stock Value (AUD)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in stock %}
+        <tr>
+          <td class="mono">{{ row.sku }}</td>
+          <td>{{ row.description or '—' }}</td>
+          <td>{{ row.qty_on_hand }}</td>
+          <td>{% if row.avg_landed_cost_aud %}A${{ "%.2f"|format(row.avg_landed_cost_aud) }}{% else %}—{% endif %}</td>
+          <td>{% if row.stock_value_aud %}A${{ "{:,.2f}".format(row.stock_value_aud) }}{% else %}—{% endif %}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty-row">No stock data</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Sales report -->
+<div id="tab-sales" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      <h3 data-i18n="tab_sales">Sales Report</h3>
+      <div class="filter-row">
+        <form method="GET" class="filter-form">
+          <input type="date" name="from_date" value="{{ from_date }}">
+          <span>→</span>
+          <input type="date" name="to_date" value="{{ to_date }}">
+          <button type="submit" class="btn btn-sm" data-i18n="filter">Filter</button>
+        </form>
+        <a href="{{ url_for('reports.export', report_type='sales', from_date=from_date, to_date=to_date) }}"
+           class="btn btn-sm">↓ Excel</a>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th data-i18n="th_date">Date</th>
+            <th>SKU</th>
+            <th data-i18n="th_qty">Qty</th>
+            <th data-i18n="th_sell_price">Price</th>
+            <th data-i18n="th_revenue">Revenue</th>
+            <th>COGS</th>
+            <th data-i18n="th_profit">Profit</th>
+            <th data-i18n="th_margin">Margin</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in sales %}
+          <tr>
+            <td>{{ row.date_sold }}</td>
+            <td class="mono">{{ row.sku }}</td>
+            <td>{{ row.qty }}</td>
+            <td>A${{ "%.2f"|format(row.sell_price_aud or 0) }}</td>
+            <td>A${{ "{:,.2f}".format(row.revenue_aud or 0) }}</td>
+            <td>A${{ "{:,.2f}".format(row.cogs_aud or 0) }}</td>
+            <td class="{% if (row.net_profit_aud or 0) > 0 %}profit-pos{% else %}profit-neg{% endif %}">
+              A${{ "{:,.2f}".format(row.net_profit_aud or 0) }}</td>
+            <td>{% if row.net_margin_pct %}{{ "%.1f"|format(row.net_margin_pct) }}%{% else %}—{% endif %}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="8" class="empty-row">No sales data</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Containers report -->
+<div id="tab-containers" class="tab-content">
+  <div class="card">
+    <div class="card-header">
+      <h3 data-i18n="tab_containers">Container Summary</h3>
+      <a href="{{ url_for('reports.export', report_type='containers') }}" class="btn btn-sm">↓ Excel</a>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th data-i18n="th_date">Date</th>
+          <th data-i18n="th_status">Status</th>
+          <th data-i18n="th_qty_ordered">Qty Ord.</th>
+          <th data-i18n="th_qty_received">Qty Rcv.</th>
+          <th data-i18n="th_qty_remaining">Remaining</th>
+          <th data-i18n="th_cost_usd">Cost (USD)</th>
+          <th data-i18n="th_overhead">Overhead</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in containers %}
+        <tr>
+          <td>#{{ row.container_id }}</td>
+          <td>{{ row.date_ordered }}</td>
+          <td><span class="status-badge status-{{ row.status }}">{{ row.status }}</span></td>
+          <td>{{ row.total_qty_ordered }}</td>
+          <td>{{ row.total_qty_received }}</td>
+          <td>{{ row.qty_remaining }}</td>
+          <td>${{ "{:,.2f}".format(row.total_usd_cost or 0) }}</td>
+          <td>A${{ "{:,.2f}".format(row.total_overhead_aud or 0) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty-row">No container data</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+{% endblock %}

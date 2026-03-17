@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Container #{{ container.id }} — NANUK{% endblock %}
+{% block page_title %}Container <span class="muted">#{{ container.id }}</span>{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('containers.export_order', container_id=container.id) }}"
+   class="btn" data-i18n="export_excel">↓ Export Excel</a>
+<a href="{{ url_for('containers.list_containers') }}" class="btn" data-i18n="back">← Back</a>
+{% endblock %}
+
+{% block content %}
+<!-- Status bar -->
+<div class="status-timeline">
+  {% set statuses = ['ordered', 'in_transit', 'received', 'closed'] %}
+  {% for s in statuses %}
+  <div class="timeline-step {% if container.status == s %}active{% elif statuses.index(s) < statuses.index(container.status) if container.status in statuses else false %}done{% endif %}">
+    <div class="step-dot"></div>
+    <div class="step-label">{{ s.replace('_',' ').title() }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="two-col">
+  <!-- Container info -->
+  <div class="card">
+    <div class="card-header"><h3 data-i18n="container_info">Container Info</h3></div>
+    <div class="info-grid">
+      <div class="info-row"><span data-i18n="date_ordered">Date Ordered</span><strong>{{ container.date_ordered }}</strong></div>
+      <div class="info-row"><span data-i18n="eta">ETA</span><strong>{{ container.expected_arrival_date or '—' }}</strong></div>
+      <div class="info-row"><span data-i18n="date_received">Date Received</span><strong>{{ container.date_received or '—' }}</strong></div>
+      <div class="info-row"><span data-i18n="container_size">Size</span><strong>{{ container.container_size }} ({{ container.container_fill }})</strong></div>
+      <div class="info-row"><span data-i18n="usd_rate">USD/AUD Rate</span><strong>{{ "%.4f"|format(container.used_rate) if container.used_rate else '—' }}</strong></div>
+      <div class="info-row"><span data-i18n="total_cbm">Total CBM</span><strong>{{ "%.2f"|format(container.total_cbm) if container.total_cbm else '—' }} m³</strong></div>
+      <div class="info-row"><span>Status</span>
+        <span class="status-badge status-{{ container.status }}">{{ container.status.replace('_',' ').title() }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shipping costs -->
+  <div class="card">
+    <div class="card-header"><h3 data-i18n="shipping_costs">Shipping Costs (Estimate)</h3></div>
+    <div class="info-grid">
+      <div class="info-row"><span data-i18n="est_ocean">Ocean Freight</span>
+        <strong>{% if container.ship_ocean_aud %}A${{ "{:,.2f}".format(container.ship_ocean_aud) }}{% else %}—{% endif %}</strong></div>
+      <div class="info-row"><span data-i18n="est_extras">Fixed Extras</span>
+        <strong>{% if container.ship_extras_aud %}A${{ "{:,.2f}".format(container.ship_extras_aud) }}{% else %}—{% endif %}</strong></div>
+      <div class="info-row"><span data-i18n="est_insurance">Insurance</span>
+        <strong>{% if container.ship_insurance_aud %}A${{ "{:,.2f}".format(container.ship_insurance_aud) }}{% else %}—{% endif %}</strong></div>
+      <div class="info-row"><span data-i18n="est_duty">Duty (5%)</span>
+        <strong>{% if container.ship_duty_aud %}A${{ "{:,.2f}".format(container.ship_duty_aud) }}{% else %}—{% endif %}</strong></div>
+      <div class="info-row"><span data-i18n="est_gst">GST (10%)</span>
+        <strong>{% if container.ship_gst_aud %}A${{ "{:,.2f}".format(container.ship_gst_aud) }}{% else %}—{% endif %}</strong></div>
+      <div class="info-row total-row"><span data-i18n="est_total">TOTAL (AUD)</span>
+        <strong class="highlight">{% if container.ship_total_aud %}A${{ "{:,.2f}".format(container.ship_total_aud) }}{% else %}—{% endif %}</strong></div>
+      <div class="info-row"><span data-i18n="manual_shipping">Manual Shipping</span>
+        <strong>{% if container.shipping_aud %}A${{ "{:,.2f}".format(container.shipping_aud) }}{% else %}—{% endif %}</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- Order lines -->
+<div class="card">
+  <div class="card-header">
+    <h3 data-i18n="order_lines">Order Lines</h3>
+    <div class="totals-row">
+      <span><strong>{{ total_qty }}</strong> units</span>
+      <span><strong>${{ "{:,.2f}".format(total_usd) }}</strong> USD</span>
+      <span><strong>A${{ "{:,.2f}".format(total_aud) }}</strong> AUD</span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th data-i18n="th_description">Description</th>
+          <th data-i18n="th_qty_ordered">Qty Ordered</th>
+          <th data-i18n="th_qty_received">Qty Received</th>
+          <th data-i18n="th_unit_price">Unit Price (USD)</th>
+          <th data-i18n="th_line_total">Line Total (USD)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for line in lines %}
+        <tr>
+          <td class="mono">{{ line.sku }}</td>
+          <td>{{ line.description }}</td>
+          <td>{{ line.qty_ordered }}</td>
+          <td>{{ line.qty_received or '—' }}</td>
+          <td>{% if line.unit_price_usd %}${{ "%.2f"|format(line.unit_price_usd) }}{% else %}—{% endif %}</td>
+          <td>${{ "{:,.2f}".format(line.line_total_usd) }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="total-row">
+          <td colspan="2"><strong>TOTAL</strong></td>
+          <td><strong>{{ total_qty }}</strong></td>
+          <td></td>
+          <td></td>
+          <td><strong>${{ "{:,.2f}".format(total_usd) }}</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Status actions -->
+{% if container.status not in ['received', 'sold_out', 'closed'] %}
+<div class="card action-card">
+  <div class="card-header"><h3 data-i18n="update_status">Update Status</h3></div>
+  <div class="action-buttons">
+    {% if container.status == 'ordered' %}
+    <form method="POST" action="{{ url_for('containers.update_status', container_id=container.id) }}">
+      <input type="hidden" name="status" value="in_transit">
+      <button type="submit" class="btn btn-primary" data-i18n="mark_in_transit">Mark as In Transit</button>
+    </form>
+    {% elif container.status == 'in_transit' %}
+    <form method="POST" action="{{ url_for('containers.update_status', container_id=container.id) }}"
+          onsubmit="return confirm('Confirm arrival and update stock?')">
+      <input type="hidden" name="status" value="received">
+      <button type="submit" class="btn btn-success" data-i18n="confirm_arrival">Confirm Arrival & Update Stock</button>
+    </form>
+    {% endif %}
+    {% if container.status in ['received'] %}
+    <form method="POST" action="{{ url_for('containers.update_status', container_id=container.id) }}">
+      <input type="hidden" name="status" value="closed">
+      <button type="submit" class="btn" data-i18n="close_container">Close Container</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

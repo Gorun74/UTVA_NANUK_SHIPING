@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}New Sale — NANUK{% endblock %}
+{% block page_title %}<span data-i18n="new_sale">New Sale</span>{% endblock %}
+
+{% block content %}
+<div class="card header-form">
+  <div class="form-row">
+    <div class="form-group">
+      <label data-i18n="date_sold">Date Sold</label>
+      <input type="date" id="date_sold" required>
+    </div>
+    <div class="form-group">
+      <label data-i18n="channel">Channel</label>
+      <select id="channel">
+        {% for ch in channels %}
+        <option value="{{ ch }}">{{ ch }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label data-i18n="usd_rate">USD/AUD Rate</label>
+      <input type="number" id="current_rate" value="1.58" step="0.0001" min="0.5" max="5">
+    </div>
+  </div>
+</div>
+
+<div class="two-col sale-layout">
+  <!-- Available stock -->
+  <div class="card">
+    <div class="card-header">
+      <h3 data-i18n="available_stock">Available Stock</h3>
+      <input type="text" id="stock-search" placeholder="Search..." class="search-input"
+             oninput="stockSearch(this.value)">
+    </div>
+    <table class="table" id="stock-table">
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th data-i18n="th_description">Description</th>
+          <th data-i18n="th_qty">Available</th>
+          <th data-i18n="th_price_usd">Price</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="stock-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Sale lines -->
+  <div class="card">
+    <div class="card-header">
+      <h3 data-i18n="sale_lines">Sale Lines</h3>
+    </div>
+    <table class="table" id="sale-table">
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th data-i18n="th_qty">Qty</th>
+          <th data-i18n="th_sell_price">Sell Price (AUD)</th>
+          <th data-i18n="th_line_revenue">Revenue</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="sale-body">
+        <tr id="empty-sale-row"><td colspan="5" class="empty-row" data-i18n="add_items">Add items from the left panel</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Profit preview -->
+    <div class="profit-preview" id="profit-preview" style="display:none">
+      <div class="profit-row">
+        <span data-i18n="total_revenue">Revenue</span>
+        <span id="prev-revenue">A$0.00</span>
+      </div>
+      <div class="profit-row total-row">
+        <span data-i18n="gross_profit">Gross Profit</span>
+        <span id="prev-profit">—</span>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button onclick="submitSale()" class="btn btn-primary btn-large" data-i18n="save_sale">
+        Save Sale
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STOCK_ITEMS = {{ stock_json | safe }};
+</script>
+<script>
+// Today's date
+document.getElementById('date_sold').value = new Date().toISOString().split('T')[0];
+
+let saleLines = {};
+
+function stockSearch(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('#stock-body tr').forEach(tr => {
+    tr.style.display = tr.dataset.sku && (tr.dataset.sku.toLowerCase().includes(q) ||
+      tr.dataset.desc.toLowerCase().includes(q)) ? '' : 'none';
+  });
+}
+
+function renderStock() {
+  const tbody = document.getElementById('stock-body');
+  tbody.innerHTML = STOCK_ITEMS.map(item => `
+    <tr data-sku="${item.sku}" data-desc="${item.description}">
+      <td class="mono">${item.sku}</td>
+      <td>${item.description}</td>
+      <td>${item.qty_on_hand}</td>
+      <td>$${item.price.toFixed(2)}</td>
+      <td><button class="btn btn-sm" onclick="addToSale('${item.sku}')">+ Add</button></td>
+    </tr>
+  `).join('');
+}
+
+function addToSale(sku) {
+  const item = STOCK_ITEMS.find(i => i.sku === sku);
+  if (!item) return;
+  if (saleLines[sku]) {
+    saleLines[sku].qty++;
+  } else {
+    saleLines[sku] = {sku, description: item.description, qty: 1,
+                     sell_price: item.price, max_qty: item.qty_on_hand};
+  }
+  renderSaleLines();
+}
+
+function removeFromSale(sku) {
+  delete saleLines[sku];
+  renderSaleLines();
+}
+
+function renderSaleLines() {
+  const tbody = document.getElementById('sale-body');
+  const emptyRow = document.getElementById('empty-sale-row');
+  const keys = Object.keys(saleLines);
+  if (keys.length === 0) {
+    tbody.innerHTML = '';
+    tbody.appendChild(emptyRow);
+    document.getElementById('profit-preview').style.display = 'none';
+    return;
+  }
+  if (emptyRow.parentNode) emptyRow.parentNode.removeChild(emptyRow);
+
+  tbody.innerHTML = keys.map(sku => {
+    const l = saleLines[sku];
+    const revenue = (l.qty * l.sell_price).toFixed(2);
+    return `
+      <tr>
+        <td class="mono">${l.sku}</td>
+        <td><input type="number" value="${l.qty}" min="1" max="${l.max_qty}"
+                   onchange="updateQty('${sku}', this.value)" class="qty-input"></td>
+        <td><input type="number" value="${l.sell_price}" step="0.01" min="0"
+                   onchange="updatePrice('${sku}', this.value)" class="price-input"></td>
+        <td>A$${revenue}</td>
+        <td><button class="btn btn-sm btn-danger" onclick="removeFromSale('${sku}')">✕</button></td>
+      </tr>`;
+  }).join('');
+
+  const totalRevenue = keys.reduce((s, k) => s + saleLines[k].qty * saleLines[k].sell_price, 0);
+  document.getElementById('prev-revenue').textContent = 'A$' + totalRevenue.toFixed(2);
+  document.getElementById('profit-preview').style.display = 'block';
+}
+
+function updateQty(sku, val) {
+  saleLines[sku].qty = Math.max(1, parseInt(val) || 1);
+  renderSaleLines();
+}
+function updatePrice(sku, val) {
+  saleLines[sku].sell_price = parseFloat(val) || 0;
+  renderSaleLines();
+}
+
+async function submitSale() {
+  const keys = Object.keys(saleLines);
+  if (!keys.length) return alert('Add at least one item.');
+
+  const payload = {
+    date_sold: document.getElementById('date_sold').value,
+    channel: document.getElementById('channel').value,
+    current_rate: parseFloat(document.getElementById('current_rate').value),
+    lines: keys.map(sku => ({
+      sku,
+      qty: saleLines[sku].qty,
+      sell_price_aud: saleLines[sku].sell_price,
+    }))
+  };
+
+  const resp = await fetch('/sales/new', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const data = await resp.json();
+  if (data.redirect) window.location = data.redirect;
+  else alert(data.error || 'Error saving sale');
+}
+
+renderStock();
+</script>
+{% endblock %}

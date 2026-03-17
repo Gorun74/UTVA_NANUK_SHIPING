@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — NANUK{% endblock %}
+{% block page_title %}<span data-i18n="nav_dashboard">Dashboard</span>{% endblock %}
+
+{% block content %}
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-label" data-i18n="kpi_stock_value">Stock Value</div>
+    <div class="kpi-value">A${{ "{:,.0f}".format(stock_value) }}</div>
+    <div class="kpi-sub">{{ total_items }} SKUs · {{ total_qty }} units</div>
+  </div>
+  <div class="kpi-card kpi-blue">
+    <div class="kpi-label" data-i18n="kpi_ordered">Ordered</div>
+    <div class="kpi-value">{{ container_counts.get('ordered', 0) }}</div>
+    <div class="kpi-sub" data-i18n="kpi_containers_transit">containers</div>
+  </div>
+  <div class="kpi-card kpi-cyan">
+    <div class="kpi-label" data-i18n="kpi_in_transit">In Transit</div>
+    <div class="kpi-value">{{ container_counts.get('in_transit', 0) }}</div>
+    <div class="kpi-sub" data-i18n="kpi_containers_transit">containers</div>
+  </div>
+  <div class="kpi-card kpi-warning">
+    <div class="kpi-label" data-i18n="kpi_low_stock">Low Stock</div>
+    <div class="kpi-value">{{ critical|length }}</div>
+    <div class="kpi-sub" data-i18n="kpi_items_critical">items critical</div>
+  </div>
+</div>
+
+<div class="two-col">
+  <!-- Recent containers -->
+  <div class="card">
+    <div class="card-header">
+      <h3 data-i18n="recent_containers">Recent Containers</h3>
+      <a href="{{ url_for('containers.list_containers') }}" class="btn btn-sm" data-i18n="view_all">View All</a>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th data-i18n="th_date">Date</th>
+          <th data-i18n="th_size">Size</th>
+          <th data-i18n="th_status">Status</th>
+          <th data-i18n="th_eta">ETA</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in recent_containers %}
+        <tr onclick="window.location='{{ url_for('containers.detail', container_id=c.id) }}'" class="clickable">
+          <td>#{{ c.id }}</td>
+          <td>{{ c.date_ordered }}</td>
+          <td>{{ c.container_size }}</td>
+          <td><span class="status-badge status-{{ c.status }}">{{ c.status.replace('_', ' ').title() }}</span></td>
+          <td>{{ c.expected_arrival_date or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty-row" data-i18n="no_containers">No containers yet</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Critical stock -->
+  <div class="card">
+    <div class="card-header">
+      <h3 data-i18n="critical_stock">Critical Stock</h3>
+      <a href="{{ url_for('catalog.list_items') }}" class="btn btn-sm" data-i18n="view_all">View All</a>
+    </div>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th data-i18n="th_qty">Qty</th>
+          <th data-i18n="th_pct">Remaining</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in critical %}
+        <tr>
+          <td class="mono">{{ item.sku }}</td>
+          <td>{{ item.qty_on_hand }}</td>
+          <td>
+            <div class="mini-bar">
+              <div class="mini-bar-fill danger" style="width:{{ [item.pct_remaining, 100]|min }}%"></div>
+            </div>
+            {{ item.pct_remaining }}%
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="empty-row" data-i18n="no_critical">All stock levels OK</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

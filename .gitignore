@@ -1,0 +1,12 @@
+.env
+*.pyc
+__pycache__/
+*.db
+*.sqlite
+.DS_Store
+venv/
+.venv/
+dist/
+*.egg-info/
+instance/
+nanuk.db

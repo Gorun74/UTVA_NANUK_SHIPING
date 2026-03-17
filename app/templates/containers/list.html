@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Containers — NANUK{% endblock %}
+{% block page_title %}<span data-i18n="nav_containers">Containers</span>{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('containers.new_container') }}" class="btn btn-primary">
+  + <span data-i18n="new_container">New Container</span>
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <table class="table containers-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th data-i18n="th_date">Ordered</th>
+        <th data-i18n="th_size">Size</th>
+        <th data-i18n="th_status">Status</th>
+        <th data-i18n="th_eta">ETA</th>
+        <th data-i18n="th_cbm">CBM</th>
+        <th data-i18n="th_rate">Rate</th>
+        <th data-i18n="th_ship_cost">Est. Ship (AUD)</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in containers %}
+      <tr class="clickable" onclick="window.location='{{ url_for('containers.detail', container_id=c.id) }}'">
+        <td><strong>#{{ c.id }}</strong></td>
+        <td>{{ c.date_ordered }}</td>
+        <td>{{ c.container_size }} {{ c.container_fill }}</td>
+        <td><span class="status-badge status-{{ c.status }}">{{ c.status.replace('_',' ').title() }}</span></td>
+        <td>{{ c.expected_arrival_date or '—' }}</td>
+        <td>{{ "%.1f"|format(c.total_cbm) if c.total_cbm else '—' }}</td>
+        <td>{{ "%.4f"|format(c.used_rate) if c.used_rate else '—' }}</td>
+        <td>{% if c.ship_total_aud %}A${{ "{:,.0f}".format(c.ship_total_aud) }}{% else %}—{% endif %}</td>
+        <td onclick="event.stopPropagation()">
+          <a href="{{ url_for('containers.export_order', container_id=c.id) }}"
+             class="btn btn-sm" title="Export to Excel">↓ XLS</a>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="9" class="empty-row" data-i18n="no_containers">No containers yet. Create your first one!</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="danger-zone">
+  <details>
+    <summary class="danger-summary" data-i18n="danger_zone">⚠ Danger Zone</summary>
+    <div class="danger-content">
+      <p data-i18n="reset_warning">This will delete all containers, sales, and reset stock quantities. Catalog is preserved.</p>
+      <form method="POST" action="{{ url_for('containers.reset') }}"
+            onsubmit="return confirm('Are you sure? This cannot be undone.')">
+        <button type="submit" class="btn btn-danger" data-i18n="reset_btn">Reset Warehouse Data</button>
+      </form>
+    </div>
+  </details>
+</div>
+{% endblock %}

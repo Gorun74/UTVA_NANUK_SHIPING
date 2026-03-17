@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}New Container — NANUK{% endblock %}
+{% block page_title %}<span data-i18n="new_container">New Container</span>{% endblock %}
+
+{% block topbar_actions %}
+<div class="view-toggle">
+  <button id="btn-animated" class="toggle-btn active" onclick="setView('animated')" data-i18n="view_animated">
+    ◈ Visual Packer
+  </button>
+  <button id="btn-table" class="toggle-btn" onclick="setView('table')" data-i18n="view_table">
+    ☰ Table View
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Container header form -->
+<div class="card header-form">
+  <div class="form-row">
+    <div class="form-group">
+      <label data-i18n="date_ordered">Date Ordered</label>
+      <input type="date" id="date_ordered" value="{{ today }}" required>
+    </div>
+    <div class="form-group">
+      <label data-i18n="eta">ETA</label>
+      <input type="date" id="expected_arrival_date">
+    </div>
+    <div class="form-group">
+      <label data-i18n="usd_rate">USD/AUD Rate</label>
+      <input type="number" id="used_rate" value="1.58" step="0.0001" min="0.5" max="5">
+    </div>
+    <div class="form-group">
+      <label data-i18n="container_size">Container Size</label>
+      <select id="container_size" onchange="updateCapacity()">
+        <option value="20ft">20ft (33.2 m³)</option>
+        <option value="40ft">40ft (67.7 m³)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label data-i18n="container_fill">Fill</label>
+      <select id="container_fill">
+        <option value="full">Full</option>
+        <option value="half">Half</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label data-i18n="shipping_aud">Shipping (AUD)</label>
+      <input type="number" id="shipping_aud" value="0" step="0.01" min="0">
+    </div>
+    <div class="form-group">
+      <label data-i18n="other1">Other 1 (AUD)</label>
+      <input type="number" id="other1_aud" value="0" step="0.01" min="0">
+    </div>
+    <div class="form-group">
+      <label data-i18n="other2">Other 2 (AUD)</label>
+      <input type="number" id="other2_aud" value="0" step="0.01" min="0">
+    </div>
+  </div>
+</div>
+
+<!-- === ANIMATED VIEW === -->
+<div id="view-animated">
+  <div class="packer-layout">
+    <!-- Left: Case panels -->
+    <div class="cases-panel">
+      <div class="panel-tabs">
+        <button class="panel-tab active" onclick="filterSize('small')" data-i18n="size_small">Small</button>
+        <button class="panel-tab" onclick="filterSize('medium')" data-i18n="size_medium">Medium</button>
+        <button class="panel-tab" onclick="filterSize('large')" data-i18n="size_large">Large</button>
+        <button class="panel-tab" onclick="filterSize('all')" data-i18n="size_all">All</button>
+      </div>
+      <div id="case-cards" class="case-cards"></div>
+    </div>
+
+    <!-- Right: Container zone -->
+    <div class="container-zone">
+      <div class="container-header">
+        <span class="container-label" data-i18n="container_label">Container</span>
+        <span id="fill-text" class="fill-text">0%</span>
+      </div>
+      <div class="container-box" id="drop-zone">
+        <div class="container-floor" id="container-floor">
+          <!-- Dropped items appear here -->
+        </div>
+        <div class="container-empty-hint" id="empty-hint" data-i18n="drag_hint">
+          Drag cases here to load the container
+        </div>
+        <div class="fill-bar-wrapper">
+          <div class="fill-bar" id="fill-bar"></div>
+        </div>
+      </div>
+
+      <!-- Shipping estimate -->
+      <div class="ship-estimate" id="ship-estimate" style="display:none">
+        <div class="ship-row">
+          <span data-i18n="est_ocean">Ocean Freight</span>
+          <span id="est-ocean">—</span>
+        </div>
+        <div class="ship-row">
+          <span data-i18n="est_extras">Fixed Extras</span>
+          <span id="est-extras">—</span>
+        </div>
+        <div class="ship-row">
+          <span data-i18n="est_insurance">Insurance</span>
+          <span id="est-insurance">—</span>
+        </div>
+        <div class="ship-row">
+          <span data-i18n="est_duty">Duty (5%)</span>
+          <span id="est-duty">—</span>
+        </div>
+        <div class="ship-row">
+          <span data-i18n="est_gst">GST (10%)</span>
+          <span id="est-gst">—</span>
+        </div>
+        <div class="ship-row ship-total">
+          <span data-i18n="est_total">TOTAL (AUD)</span>
+          <span id="est-total">—</span>
+        </div>
+        <div class="ship-row">
+          <span data-i18n="est_per_cbm">Per CBM</span>
+          <span id="est-per-cbm">—</span>
+        </div>
+        <div id="est-note" class="ship-note"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === TABLE VIEW === -->
+<div id="view-table" style="display:none">
+  <div class="card">
+    <div class="card-header">
+      <h3 data-i18n="order_lines">Order Lines</h3>
+      <div class="search-form">
+        <input type="text" id="table-search" placeholder="Search SKU..." class="search-input"
+               oninput="tableSearch(this.value)">
+      </div>
+    </div>
+    <table class="table" id="catalog-picker">
+      <thead>
+        <tr>
+          <th>SKU</th>
+          <th data-i18n="th_description">Description</th>
+          <th data-i18n="th_ext_dim">Ext. Dim.</th>
+          <th data-i18n="th_volume">m³</th>
+          <th data-i18n="th_price_usd">Price USD</th>
+          <th data-i18n="th_qty">Qty</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="catalog-body">
+        <!-- Populated by JS -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Added items summary -->
+<div class="card order-summary" id="order-summary" style="display:none">
+  <div class="card-header">
+    <h3 data-i18n="order_summary">Order Summary</h3>
+    <div>
+      <span class="cbm-badge" id="summary-cbm">0.00 m³</span>
+      <span class="usd-badge" id="summary-usd">$0.00 USD</span>
+    </div>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th data-i18n="th_description">Description</th>
+        <th data-i18n="th_qty">Qty</th>
+        <th data-i18n="th_price_usd">Unit Price USD</th>
+        <th data-i18n="th_line_total">Line Total</th>
+        <th data-i18n="th_cbm">CBM</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="summary-body"></tbody>
+  </table>
+  <div class="form-actions">
+    <button onclick="saveContainer()" class="btn btn-primary btn-large" data-i18n="save_container">
+      Save Container Order
+    </button>
+    <button onclick="clearAll()" class="btn" data-i18n="clear_all">Clear All</button>
+  </div>
+</div>
+
+<!-- Drop modal -->
+<div class="modal-overlay" id="modal" style="display:none">
+  <div class="modal-card">
+    <h3 id="modal-title">Add to Container</h3>
+    <div class="modal-sku" id="modal-sku"></div>
+    <div class="form-group">
+      <label data-i18n="quantity">Quantity</label>
+      <input type="number" id="modal-qty" value="1" min="1" max="999">
+    </div>
+    <div class="form-group">
+      <label data-i18n="color">Color</label>
+      <select id="modal-color">
+        <option value="Black">Black</option>
+        <option value="Orange">Orange</option>
+        <option value="Olive">Olive</option>
+        <option value="Desert Tan">Desert Tan</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label data-i18n="unit_price_usd">Unit Price (USD)</label>
+      <input type="number" id="modal-price" step="0.01" min="0">
+    </div>
+    <div class="modal-actions">
+      <button onclick="confirmDrop()" class="btn btn-primary" data-i18n="add_to_container">Add to Container</button>
+      <button onclick="closeModal()" class="btn" data-i18n="cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CASES = {{ cases_json | safe }};
+const CAPACITY = {{ capacity | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/container_packer.js') }}"></script>
+{% endblock %}

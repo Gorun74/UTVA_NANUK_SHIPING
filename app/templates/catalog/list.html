@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Catalog — NANUK{% endblock %}
+{% block page_title %}<span data-i18n="nav_catalog">Catalog</span>{% endblock %}
+
+{% block topbar_actions %}
+<form method="GET" class="search-form">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search SKU or description..." class="search-input">
+  <button type="submit" class="btn btn-primary" data-i18n="search">Search</button>
+  {% if q %}<a href="{{ url_for('catalog.list_items') }}" class="btn" data-i18n="clear">Clear</a>{% endif %}
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <span>{{ items|length }} <span data-i18n="items_found">items</span></span>
+  </div>
+  <div class="table-responsive">
+    <table class="table catalog-table">
+      <thead>
+        <tr>
+          <th data-i18n="th_size_cat">Size</th>
+          <th>SKU</th>
+          <th data-i18n="th_description">Description</th>
+          <th data-i18n="th_ext_dim">Ext. Dim. (mm)</th>
+          <th data-i18n="th_volume">Volume m³</th>
+          <th data-i18n="th_price_usd">Price (USD)</th>
+          <th data-i18n="th_map_usd">MAP (USD)</th>
+          <th data-i18n="th_qty">Stock Qty</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td>
+            <span class="size-badge size-{{ item.size_cat }}">
+              {{ item.size_cat.title() }}
+            </span>
+          </td>
+          <td class="mono">{{ item.sku }}</td>
+          <td>{{ item.description }}</td>
+          <td class="mono">{{ item.ext_dim }}</td>
+          <td class="mono">{{ "%.4f"|format(item.volume_m3) if item.volume_m3 else "—" }}</td>
+          <td>{% if item.price %}${{ "%.2f"|format(item.price) }}{% else %}—{% endif %}</td>
+          <td>{% if item.us_map_price %}${{ "%.2f"|format(item.us_map_price) }}{% else %}—{% endif %}</td>
+          <td>
+            <span class="qty-badge {% if item.qty == 0 %}qty-zero{% elif item.qty < 5 %}qty-low{% endif %}">
+              {{ item.qty }}
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty-row">No items found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
