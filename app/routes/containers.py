@@ -90,11 +90,13 @@ def new_container():
             "size_cat": _size_category(item),
         })
 
+    import datetime
     return render_template(
         "containers/new.html",
         cases_json=json.dumps(cases_data),
         colors=CASE_COLORS,
         capacity=CONTAINER_CAPACITY_M3,
+        today=datetime.date.today().isoformat(),
     )
 
 

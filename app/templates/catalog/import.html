@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Import Catalog — NANUK{% endblock %}
+{% block page_title %}Import Cases Catalog{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('catalog.list_items') }}" class="btn" data-i18n="back">← Back</a>
+{% endblock %}
+
+{% block content %}
+
+{% if item_count == 0 %}
+<div class="alert alert-warning">
+  ⚠ Database is empty — no cases loaded yet. Import the catalog to get started.
+</div>
+{% else %}
+<div class="alert alert-success">
+  ✓ {{ item_count }} cases currently in database. Re-import to refresh data.
+</div>
+{% endif %}
+
+<div class="card" style="max-width:680px">
+  <div class="card-header">
+    <h3>Import from 3 catalog files</h3>
+  </div>
+  <form method="POST" action="{{ url_for('catalog.import_catalog') }}">
+    <div class="form-row" style="flex-direction:column;gap:16px;padding:20px">
+
+      <div class="form-group">
+        <label>Cases filter list (CSV)</label>
+        <input type="text" name="cases_path" value="{{ default_cases }}" required>
+        <small style="color:var(--text-muted)">nanuk_cases_only.csv — list of 36 case SKUs</small>
+      </div>
+
+      <div class="form-group">
+        <label>Case catalog (XLSX)</label>
+        <input type="text" name="catalog_path" value="{{ default_catalog }}" required>
+        <small style="color:var(--text-muted)">Case_catalog.xlsx — dimensions in mm</small>
+      </div>
+
+      <div class="form-group">
+        <label>Price agreement (XLSX)</label>
+        <input type="text" name="price_path" value="{{ default_price }}" required>
+        <small style="color:var(--text-muted)">Price Agreement - UTVA WA.xlsx — USD prices</small>
+      </div>
+
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-large">
+        ⬇ Import Cases Catalog
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="card" style="max-width:680px;margin-top:0">
+  <div class="card-header"><h3>What this does</h3></div>
+  <div style="padding:16px 18px;font-size:13px;line-height:1.7;color:var(--text-muted)">
+    <p>Merges all 3 files to create <strong style="color:var(--text)">36 Nanuk case entries</strong> with:</p>
+    <ul style="margin:8px 0 0 18px">
+      <li>External &amp; internal dimensions (mm)</li>
+      <li>Volume (m³) — used for container fill calculation</li>
+      <li>USD prices from price agreement</li>
+    </ul>
+    <p style="margin-top:10px">⚠ Existing items will be updated, stock quantities are preserved.</p>
+  </div>
+</div>
+{% endblock %}

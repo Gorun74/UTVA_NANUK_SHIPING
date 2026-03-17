@@ -258,15 +258,17 @@ function updateShippingEstimate() {
 
 async function _fetchEstimate() {
   const keys = Object.keys(orderedItems);
-  if (!keys.length) {
-    document.getElementById("ship-estimate").style.display = "none";
-    return;
-  }
-
   const totalCbm = keys.reduce((s, k) => s + orderedItems[k].volume_m3 * orderedItems[k].qty, 0);
   const rate = parseFloat(document.getElementById("used_rate")?.value || "1.58");
   const goodsUsd = keys.reduce((s, k) => s + (orderedItems[k].sell_price || 0) * orderedItems[k].qty, 0);
   const goodsAud = goodsUsd * rate;
+
+  // Hide packer panel if no items
+  if (!keys.length) {
+    document.getElementById("ship-estimate").style.display = "none";
+    _resetHeaderEstimate();
+    return;
+  }
 
   try {
     const resp = await fetch("/api/shipping-estimate", {
@@ -277,17 +279,44 @@ async function _fetchEstimate() {
     const data = await resp.json();
     if (data.error) return;
 
-    const fmt = v => "A$" + (v || 0).toLocaleString("en-AU", { maximumFractionDigits: 0 });
-    document.getElementById("est-ocean").textContent    = fmt(data.ocean_AUD);
-    document.getElementById("est-extras").textContent   = fmt(data.extras_AUD);
-    document.getElementById("est-insurance").textContent= fmt(data.insurance_AUD);
-    document.getElementById("est-duty").textContent     = fmt(data.duty_AUD);
-    document.getElementById("est-gst").textContent      = fmt(data.gst_AUD);
-    document.getElementById("est-total").textContent    = fmt(data.TOTAL_AUD);
-    document.getElementById("est-per-cbm").textContent  = "A$" + (data.per_cbm_AUD || 0).toFixed(2) + "/m³";
-    document.getElementById("est-note").textContent     = data.note || "";
+    const fmt  = v => "A$" + (v || 0).toLocaleString("en-AU", { maximumFractionDigits: 0 });
+    const fmt2 = v => "A$" + (v || 0).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Update packer panel (right side)
+    document.getElementById("est-ocean").textContent     = fmt(data.ocean_AUD);
+    document.getElementById("est-extras").textContent    = fmt(data.extras_AUD);
+    document.getElementById("est-insurance").textContent = fmt(data.insurance_AUD);
+    document.getElementById("est-duty").textContent      = fmt(data.duty_AUD);
+    document.getElementById("est-gst").textContent       = fmt(data.gst_AUD);
+    document.getElementById("est-total").textContent     = fmt(data.TOTAL_AUD);
+    document.getElementById("est-per-cbm").textContent   = "A$" + (data.per_cbm_AUD || 0).toFixed(2) + "/m³";
+    document.getElementById("est-note").textContent      = data.note || "";
     document.getElementById("ship-estimate").style.display = "";
+
+    // Update header box (always visible)
+    _setEl("h-ocean",    fmt(data.ocean_AUD));
+    _setEl("h-extras",   fmt(data.extras_AUD));
+    _setEl("h-insurance",fmt(data.insurance_AUD));
+    _setEl("h-duty",     fmt(data.duty_AUD));
+    _setEl("h-gst",      fmt(data.gst_AUD));
+    _setEl("h-total",    fmt2(data.TOTAL_AUD));
+    _setEl("h-per-cbm",  "A$" + (data.per_cbm_AUD || 0).toFixed(2) + "/m³");
+    _setEl("h-type",     data.container || "—");
+    _setEl("ship-header-cbm", totalCbm.toFixed(2) + " m³");
+    _setEl("ship-header-note", data.note || "");
   } catch {}
+}
+
+function _setEl(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function _resetHeaderEstimate() {
+  ["h-ocean","h-extras","h-insurance","h-duty","h-gst","h-per-cbm","h-type"].forEach(id => _setEl(id, "—"));
+  _setEl("h-total", "add items →");
+  _setEl("ship-header-cbm", "");
+  _setEl("ship-header-note", "");
 }
 
 /* ─── Order summary ─────────────────────────────────────────── */

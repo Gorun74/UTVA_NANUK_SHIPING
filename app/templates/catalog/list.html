@@ -8,9 +8,16 @@
   <button type="submit" class="btn btn-primary" data-i18n="search">Search</button>
   {% if q %}<a href="{{ url_for('catalog.list_items') }}" class="btn" data-i18n="clear">Clear</a>{% endif %}
 </form>
+<a href="{{ url_for('catalog.import_catalog') }}" class="btn">⬇ Import Catalog</a>
 {% endblock %}
 
 {% block content %}
+{% if items|length == 0 %}
+<div class="alert alert-warning" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+  <span>⚠ No cases in database yet.</span>
+  <a href="{{ url_for('catalog.import_catalog') }}" class="btn btn-primary">⬇ Import Catalog Now</a>
+</div>
+{% endif %}
 <div class="card">
   <div class="card-header">
     <span>{{ items|length }} <span data-i18n="items_found">items</span></span>

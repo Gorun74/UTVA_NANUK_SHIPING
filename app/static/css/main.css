@@ -703,3 +703,36 @@ input:focus, select:focus, textarea:focus {
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ---- Shipping estimate header box ---- */
+.ship-estimate-header {
+  margin: 0 18px 16px;
+  background: rgba(37,99,235,.07);
+  border: 1px solid rgba(37,99,235,.25);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+}
+.ship-est-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.ship-est-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px 20px;
+}
+.ship-est-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(46,51,72,.4);
+}
+.ship-est-item span { color: var(--text-muted); }
+.ship-est-item strong { color: var(--text); }
+.ship-est-total { font-weight: 700; font-size: 14px; }
+.ship-est-total strong { color: var(--accent); font-size: 15px; }

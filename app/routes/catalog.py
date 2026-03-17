@@ -1,7 +1,7 @@
 import os
-from flask import Blueprint, render_template, request, jsonify, send_file, current_app
+from flask import Blueprint, render_template, request, jsonify, send_file, current_app, flash, redirect, url_for
 from flask_login import login_required
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from app.database import get_session
 from app.models import Item, Stock
 
@@ -84,6 +84,47 @@ def api_cases():
             "colors": CASE_COLORS,
         })
     return jsonify(cases)
+
+
+@bp.route("/catalog/import", methods=["GET", "POST"])
+@login_required
+def import_catalog():
+    """Import cases catalog from the 3 known files."""
+    session = get_session()
+
+    # Default paths — same machine as desktop app
+    default_cases  = r"D:\!Posao\#2026\UTVAWA NANUK\IVENTAR\nanuk_cases_only.csv"
+    default_catalog= r"D:\!Posao\#2026\UTVAWA NANUK\IVENTAR\Case_catalog.xlsx"
+    default_price  = r"D:\!Posao\#2026\UTVAWA NANUK\IVENTAR\Price Agreement - UTVA WA.xlsx"
+
+    if request.method == "POST":
+        cases_path   = request.form.get("cases_path",   default_cases).strip()
+        catalog_path = request.form.get("catalog_path", default_catalog).strip()
+        price_path   = request.form.get("price_path",   default_price).strip()
+
+        missing = [p for p in [cases_path, catalog_path, price_path] if not os.path.exists(p)]
+        if missing:
+            flash(f"File(s) not found: {', '.join(missing)}", "error")
+            return render_template("catalog/import.html",
+                                   default_cases=cases_path,
+                                   default_catalog=catalog_path,
+                                   default_price=price_path)
+
+        try:
+            from app.utils.importer import import_cases_catalog
+            imported, skipped = import_cases_catalog(cases_path, catalog_path, price_path, session)
+            flash(f"Import complete: {imported} items imported, {skipped} skipped.", "success")
+            return redirect(url_for("catalog.list_items"))
+        except Exception as e:
+            session.rollback()
+            flash(f"Import error: {e}", "error")
+
+    item_count = session.execute(select(func.count(Item.sku))).scalar() or 0
+    return render_template("catalog/import.html",
+                           default_cases=default_cases,
+                           default_catalog=default_catalog,
+                           default_price=default_price,
+                           item_count=item_count)
 
 
 @bp.route("/api/case-image/<sku>")
